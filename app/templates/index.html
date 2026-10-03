@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller 3 — Dashboard Modo Oscuro (CI/CD + ConfigCat + Render)</title>
+  <!-- Ticket 1: CSS Tokens y lógica de diseño cargada en el HTML raíz -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%22><text y=%2222%22 font-size=%2222%22>🌙</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Principal -->
+    <header class="app-header" role="banner">
+      <div class="brand-section">
+        <div class="brand-icon" aria-hidden="true">🌗</div>
+        <div>
+          <h1 class="brand-title">DevOps &amp; TBD Dashboard</h1>
+          <p class="brand-subtitle">Taller 3: CI/CD, Render, ConfigCat y Trunk-Based Development</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Ticket 2 & 3: Botón Toggle del Modo Oscuro (Accesible con WAI-ARIA) -->
+        <div id="toggleWrapper" class="dark-mode-toggle-wrapper hidden" aria-live="polite">
+          <span id="toggleStatusText" class="toggle-label">Modo Claro</span>
+          <button 
+            type="button" 
+            id="darkModeToggle" 
+            class="toggle-switch-btn" 
+            role="switch" 
+            aria-checked="false" 
+            aria-label="Alternar entre modo claro y modo oscuro">
+            <span class="toggle-thumb" aria-hidden="true">☀️</span>
+          </button>
+        </div>
+
+        <span class="badge badge-info">
+          <span class="status-dot"></span>
+          Ambiente: {{ environment }}
+        </span>
+      </div>
+    </header>
+
+    <!-- Banner Informativo del Taller -->
+    <div class="alert alert-info">
+      <div>
+        <strong>📌 Demostración en vivo del Ejemplo 3 (Modo Oscuro):</strong>
+        Esta aplicación implementa la división de historias en micro-tickets según Trunk-Based Development (TBD)
+        con Feature Flags de ConfigCat y auto-despliegue continuo en Render.
+      </div>
+    </div>
+
+    <!-- Panel de Control y Simulación Interactivo para el Taller -->
+    <section class="simulator-panel" aria-labelledby="sim-title">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h2 id="sim-title" class="section-title" style="margin-bottom: 4px;">
+            🎛️ Controlador de TBD Slicing &amp; Feature Flag
+          </h2>
+          <p class="metric-desc">
+            Simula las tres etapas del ciclo de vida de la historia o conecta la clave de ConfigCat en producción.
+          </p>
+        </div>
+        <div class="user-selector-wrapper">
+          <label for="userSelector" class="metric-desc" style="font-weight: 600;">Usuario Evaluado:</label>
+          <select id="userSelector" class="input-select">
+            <option value="user_1">user_1 (Usuario Regular)</option>
+            <option value="user_canary_early">user_canary_early (Canary Tester)</option>
+            <option value="user_qa_tester">user_qa_tester (QA Team)</option>
+            <option value="user_production_99">user_production_99 (Prod User)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="simulator-controls">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Cambiar Etapa:</span>
+        <button 
+          type="button" 
+          class="btn btn-secondary btn-stage selected" 
+          data-stage="ticket_1" 
+          onclick="switchSimulationStage('ticket_1')">
+          Ticket 1: 0% (Flag OFF)
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-secondary btn-stage" 
+          data-stage="ticket_2" 
+          onclick="switchSimulationStage('ticket_2')">
+          Ticket 2: 10% Canary (Sin Persistencia)
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-secondary btn-stage" 
+          data-stage="ticket_3" 
+          onclick="switchSimulationStage('ticket_3')">
+          Ticket 3: 100% Rollout (Con Persistencia)
+        </button>
+      </div>
+    </section>
+
+    <!-- Métricas del Pipeline & Flags -->
+    <section class="metrics-grid" aria-label="Métricas de Pipeline y Feature Toggle">
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Auto-Deploy Render</span>
+          <span class="badge badge-success">Activo</span>
+        </div>
+        <div class="metric-value">main</div>
+        <p class="metric-desc">Webhook de Render sincronizado con la rama principal.</p>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Feature Flag ConfigCat</span>
+          <span id="flagStatus" class="badge badge-warning">Cargando...</span>
+        </div>
+        <div class="metric-value" style="font-size: 1.4rem; font-family: var(--font-mono);">dark_mode_enabled</div>
+        <p class="metric-desc">Evaluación en tiempo real por usuario.</p>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Rollout Actual</span>
+          <span class="badge badge-info">Gradual</span>
+        </div>
+        <div id="rolloutPercent" class="metric-value">0%</div>
+        <p id="activeStageBadge" class="metric-desc">Ticket 1: CSS Variables</p>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Pipeline CI</span>
+          <span class="badge badge-success">Verde</span>
+        </div>
+        <div class="metric-value">100% OK</div>
+        <p class="metric-desc">Flake8 + Pytest + Docker Build en GitHub Actions.</p>
+      </div>
+    </section>
+
+    <!-- Sección de Slicing y Flujo de Pipeline -->
+    <div class="grid-two-col">
+      <!-- Tarjetas de División de Tickets (Ejemplo 3) -->
+      <section class="card" aria-labelledby="tickets-title">
+        <h2 id="tickets-title" class="section-title">
+          📋 División Correcta de la Historia (Ejemplo 3)
+        </h2>
+        <div class="ticket-list">
+          <!-- Ticket 1 -->
+          <article id="card-ticket_1" class="ticket-item active-stage">
+            <div class="ticket-header">
+              <span class="ticket-id">Ticket 1</span>
+              <span class="badge badge-warning">Rollout 0% (OFF)</span>
+            </div>
+            <h3 class="ticket-title">Variables CSS y lógica en HTML raíz</h3>
+            <p class="ticket-desc">
+              Definir variables CSS/tema oscuro y lógica de cambio de clase en el HTML raíz,
+              detrás de un flag <code>dark_mode_enabled</code> apagado. Nadie lo ve aún en producción.
+            </p>
+            <div class="ticket-meta">
+              <span><strong>UI Toggle:</strong> Oculto</span>
+              <span>•</span>
+              <span><strong>Persistencia:</strong> Inactiva</span>
+            </div>
+          </article>
+
+          <!-- Ticket 2 -->
+          <article id="card-ticket_2" class="ticket-item">
+            <div class="ticket-header">
+              <span class="ticket-id">Ticket 2</span>
+              <span class="badge badge-info">Rollout 10% Canary</span>
+            </div>
+            <h3 class="ticket-title">Botón toggle visible solo al 10% de usuarios</h3>
+            <p class="ticket-desc">
+              Agregar botón toggle visible solo al 10% de usuarios vía toggle de ConfigCat,
+              sin persistencia todavía (no guarda en localStorage ni backend).
+            </p>
+            <div class="ticket-meta">
+              <span><strong>UI Toggle:</strong> Visible al 10%</span>
+              <span>•</span>
+              <span><strong>Persistencia:</strong> No (resetea al recargar)</span>
+            </div>
+          </article>
+
+          <!-- Ticket 3 -->
+          <article id="card-ticket_3" class="ticket-item">
+            <div class="ticket-header">
+              <span class="ticket-id">Ticket 3</span>
+              <span class="badge badge-success">Rollout 100% General</span>
+            </div>
+            <h3 class="ticket-title">Guardar preferencia y subir flag al 100%</h3>
+            <p class="ticket-desc">
+              Guardar la preferencia en <code>localStorage</code> y backend (<code>/api/user/preferences</code>),
+              y subir el flag al 100% de usuarios.
+            </p>
+            <div class="ticket-meta">
+              <span><strong>UI Toggle:</strong> Visible para todos</span>
+              <span>•</span>
+              <span><strong>Persistencia:</strong> LocalStorage + API</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Visualizador del Pipeline y DoD (Miro Frame Replica) -->
+      <section class="card" aria-labelledby="pipeline-title">
+        <h2 id="pipeline-title" class="section-title">
+          🚀 Flujo CI/CD a Render (Miro Bloque 1 &amp; 3)
+        </h2>
+        <div class="pipeline-flow">
+          <div class="pipeline-step green">
+            <div class="pipeline-step-title">1. Push / PR</div>
+            <div class="pipeline-step-sub">Rama corta</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step green">
+            <div class="pipeline-step-title">2. CI GitHub</div>
+            <div class="pipeline-step-sub">Tests + Lint</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step green">
+            <div class="pipeline-step-title">3. Merge main</div>
+            <div class="pipeline-step-sub">Trunk Based</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step green">
+            <div class="pipeline-step-title">4. Auto-Deploy</div>
+            <div class="pipeline-step-sub">Render Web</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step green">
+            <div class="pipeline-step-title">5. ConfigCat</div>
+            <div class="pipeline-step-sub">Toggle en Vivo</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">
+            ✅ Definition of Done (DoD) Acordado:
+          </h3>
+          <ul style="padding-left: 20px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+            <li><strong>DoD Técnico:</strong> Código testeado en Pytest, Lint sin errores (Flake8), Docker build exitoso, Feature Toggle verificado.</li>
+            <li><strong>DoD de Negocio:</strong> Criterios de aceptación cumplidos, PO conoce el estado del flag y puede cambiar el rollout.</li>
+            <li><strong>DoD de Despliegue:</strong> Desplegado automáticamente en Render, Health Check <code>/health</code> respondiendo 200 OK.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- Live Preview & Tabla de Logs del Dashboard -->
+    <section class="card" aria-labelledby="live-title">
+      <h2 id="live-title" class="section-title">
+        📊 Métricas de Prueba del Dashboard
+      </h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Servicio</th>
+            <th>Endpoint</th>
+            <th>Estado</th>
+            <th>Respuesta</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Render Healthcheck</strong></td>
+            <td><code>/health</code></td>
+            <td><span class="badge badge-success">200 OK</span></td>
+            <td><code>{"status":"ok"}</code></td>
+            <td>Sonda de liveness utilizada por Render</td>
+          </tr>
+          <tr>
+            <td><strong>Feature Flags API</strong></td>
+            <td><code>/api/features</code></td>
+            <td><span class="badge badge-success">200 OK</span></td>
+            <td><code>{"dark_mode_enabled":...}</code></td>
+            <td>Evaluación del SDK de ConfigCat por usuario</td>
+          </tr>
+          <tr>
+            <td><strong>Preferencia Backend</strong></td>
+            <td><code>/api/user/preferences</code></td>
+            <td><span class="badge badge-info">REST API</span></td>
+            <td><code>POST/GET</code></td>
+            <td>Persistencia del Ticket 3</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Taller 3 — CI/CD, Automatización de Pruebas y Cierre de Pendientes (Render + ConfigCat)</p>
+      <p style="margin-top: 4px;">Desarrollado en Python + FastAPI + ConfigCat SDK + Vanilla JS Accesible</p>
+    </footer>
+  </div>
+
+  <!-- Ticket 2 & 3: Lógica del Cliente -->
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
