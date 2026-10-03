@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tablero Interactivo Miro — Taller 3: CI/CD, Render, ConfigCat y DoD</title>
+  <style>
+    :root {
+      --miro-yellow: #fff9b8;
+      --miro-green: #d5f5e3;
+      --miro-red: #fadbd8;
+      --miro-blue: #d4e6f1;
+      --miro-purple: #ebd7f5;
+      --miro-dark-blue: #1a365d;
+      --bg-board: #f4f5f7;
+      --border-frame: #cbd5e1;
+      --text-main: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-board);
+      color: var(--text-main);
+      padding: 30px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+    }
+
+    .top-bar h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .btn-action {
+      background: #050038;
+      color: #ffd02f;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s;
+    }
+
+    .btn-action:hover {
+      transform: scale(1.03);
+    }
+
+    .board-container {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .miro-frame {
+      background: white;
+      border: 2px solid var(--border-frame);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      position: relative;
+    }
+
+    .frame-tag {
+      position: absolute;
+      top: -14px;
+      left: 24px;
+      background: #050038;
+      color: white;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 4px 14px;
+      border-radius: 20px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .frame-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      margin-top: 6px;
+      color: #1e293b;
+    }
+
+    /* Sticky notes layout */
+    .sticky-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .sticky-note {
+      flex: 1;
+      min-width: 200px;
+      min-height: 160px;
+      padding: 16px;
+      border-radius: 4px;
+      box-shadow: 2px 4px 10px rgba(0,0,0,0.08);
+      font-size: 0.85rem;
+      line-height: 1.45;
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .sticky-note:hover {
+      transform: translateY(-4px) rotate(-0.5deg);
+      box-shadow: 4px 8px 16px rgba(0,0,0,0.12);
+    }
+
+    .sticky-note strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+
+    .note-green { background-color: var(--miro-green); }
+    .note-yellow { background-color: var(--miro-yellow); }
+    .note-red { background-color: var(--miro-red); }
+    .note-blue { background-color: var(--miro-blue); }
+    .note-purple { background-color: var(--miro-purple); }
+
+    .arrow-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: #94a3b8;
+      font-weight: bold;
+    }
+
+    /* 3 column grid */
+    .grid-three {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .grid-three {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .column-box {
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 16px;
+      background: #f8fafc;
+    }
+
+    .column-header {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #050038;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      display: none;
+      z-index: 1000;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div>
+      <h1>🎨 Tablero de Miro — Taller 3 (CI/CD + Render + ConfigCat + DoD)</h1>
+      <p style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">
+        Visualización interactiva idéntica a las plantillas solicitadas para Miro.
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-action" onclick="copiarMermaid()">
+        📋 Copiar Código Mermaid para Miro
+      </button>
+    </div>
+  </div>
+
+  <div class="board-container">
+
+    <!-- FRAME 1: Diagnóstico del Pipeline -->
+    <section class="miro-frame">
+      <span class="frame-tag">Frame 1</span>
+      <h2 class="frame-title">1. Diagnóstico del Pipeline Actual</h2>
+      
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px; font-weight: 600;">
+        A. Flujo Actual (Sticky Notes en Horizontal)
+      </p>
+      <div class="sticky-row" style="margin-bottom: 24px;">
+        <div class="sticky-note note-green">
+          <strong>1. Push / PR</strong>
+          Rama corta derivada de main. Cambios pequeños y frecuentes.
+        </div>
+        <div class="arrow-divider">➔</div>
+        <div class="sticky-note note-green">
+          <strong>2. CI GitHub</strong>
+          Ejecuta Flake8 (linting) y Pytest (8 pruebas unitarias).
+        </div>
+        <div class="arrow-divider">➔</div>
+        <div class="sticky-note note-yellow">
+          <strong>3. Code Review</strong>
+          Revisión rápida por pares (Pair/Mob programming) en menos de 2h.
+        </div>
+        <div class="arrow-divider">➔</div>
+        <div class="sticky-note note-green">
+          <strong>4. Merge a main</strong>
+          Integración continua Trunk-Based. Sin ramas largas.
+        </div>
+        <div class="arrow-divider">➔</div>
+        <div class="sticky-note note-green">
+          <strong>5. Docker GHCR</strong>
+          Empaquetado de contenedor con sonda de salud.
+        </div>
+        <div class="arrow-divider">➔</div>
+        <div class="sticky-note note-green">
+          <strong>6. Render Deploy</strong>
+          Webhook automático dispara despliegue a producción.
+        </div>
+        <div class="arrow-divider">➔</div>
+        <div class="sticky-note note-green">
+          <strong>7. ConfigCat</strong>
+          Feature flag <code>dark_mode_enabled</code> controla la visibilidad.
+        </div>
+      </div>
+
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px; font-weight: 600;">
+        B. Semáforo del Pipeline
+      </p>
+      <div class="grid-three">
+        <div class="sticky-note note-green">
+          <strong>🟢 Ya funciona bien</strong>
+          • Pytest con 8 pruebas unitarias.<br>
+          • Flake8 con 0 errores de sintaxis y PEP8.<br>
+          • Dockerfile seguro con usuario no-root.<br>
+          • SDK Python de ConfigCat integrado.
+        </div>
+        <div class="sticky-note note-yellow">
+          <strong>🟡 Parcial / Manual</strong>
+          • Conectar webhook de GitHub a Render.<br>
+          • Crear toggle en app.configcat.com.<br>
+          • Inyectar clave en variables de entorno.
+        </div>
+        <div class="sticky-note note-red">
+          <strong>🔴 Faltaba (Cerrado hoy)</strong>
+          • Auto-despliegue continuo a Render.<br>
+          • Sonda /health respondiendo 200.<br>
+          • DoD formalizado por el equipo.
+        </div>
+      </div>
+    </section>
+
+    <!-- FRAME 2: Robustez del CI -->
+    <section class="miro-frame">
+      <span class="frame-tag">Frame 2</span>
+      <h2 class="frame-title">2. Robustez del CI y Automatización de Pruebas</h2>
+      <div class="grid-three">
+        <div class="sticky-note note-blue">
+          <strong>Sección A — Mínimo Viable</strong>
+          • <code>test_health_check_returns_200_ok</code><br>
+          • <code>test_ticket_1_flag_is_off</code><br>
+          • <code>test_ticket_2_ten_percent_rollout</code><br>
+          • <code>test_ticket_3_one_hundred_percent</code><br>
+          • Tiempo CI máximo: 3 minutos (Actual: ~45s).
+        </div>
+        <div class="sticky-note note-green">
+          <strong>Sección B — Mejoras Realizadas</strong>
+          • Test determinista de segmentación de usuarios por hash (10% canary).<br>
+          • Verificación de persistencia en REST API.<br>
+          • Build de imagen Docker en GitHub Actions.
+        </div>
+        <div class="sticky-note note-purple">
+          <strong>Sección C — Acuerdo de Equipo</strong>
+          <em>"Si el CI está rojo ➔ se prioriza ponerlo verde antes de seguir con features."</em><br><br>
+          <strong>¿Acordado?</strong> SÍ (Unánime).
+        </div>
+      </div>
+    </section>
+
+    <!-- FRAME 3: Auto-deploy a Render -->
+    <section class="miro-frame">
+      <span class="frame-tag">Frame 3</span>
+      <h2 class="frame-title">3. Auto-deploy a Render desde main</h2>
+      <div class="grid-three">
+        <div class="sticky-note note-green">
+          <strong>Checklist de Configuración</strong>
+          ✔ Repo conectado a Render.<br>
+          ✔ Rama: main.<br>
+          ✔ Auto-Deploy: Activado.<br>
+          ✔ Build: <code>pip install -r requirements.txt</code><br>
+          ✔ Start: <code>uvicorn app.main:app ...</code><br>
+          ✔ Healthcheck: <code>/health</code>
+        </div>
+        <div class="sticky-note note-blue">
+          <strong>Decisión: ¿Producción o Staging?</strong>
+          <strong>Directo a Producción</strong> con Trunk-Based Development.<br><br>
+          El código incompleto entra protegido tras el Feature Toggle apagado (0% rollout).
+        </div>
+        <div class="sticky-note note-yellow">
+          <strong>Política de Incidentes &amp; Rollback</strong>
+          • Notificaciones automáticas a canal <code>#devops-alerts</code>.<br>
+          • Rollback inmediato a versión previa en 1 clic desde el dashboard de Render.
+        </div>
+      </div>
+    </section>
+
+    <!-- FRAME 4: Feature Toggle ConfigCat (Modo Oscuro) -->
+    <section class="miro-frame">
+      <span class="frame-tag">Frame 4</span>
+      <h2 class="frame-title">4. Feature Toggle con ConfigCat (Ejemplo 3: Modo Oscuro)</h2>
+      <div class="grid-three">
+        <div class="sticky-note note-yellow">
+          <strong>Ticket 1 (0% Rollout)</strong>
+          • Flag <code>dark_mode_enabled = False</code><br>
+          • Variables CSS y clase .dark en HTML raíz.<br>
+          • Botón oculto; nadie lo ve en producción.
+        </div>
+        <div class="sticky-note note-blue">
+          <strong>Ticket 2 (10% Canary)</strong>
+          • Botón toggle visible solo al 10% de usuarios.<br>
+          • Evaluación probabilística con User ID.<br>
+          • Sin persistencia (resetea al recargar).
+        </div>
+        <div class="sticky-note note-green">
+          <strong>Ticket 3 (100% Rollout)</strong>
+          • Flag al 100% para todos.<br>
+          • Persistencia en LocalStorage + Backend API.<br>
+          • Fecha límite de retiro de toggle: 2 semanas.
+        </div>
+      </div>
+    </section>
+
+    <!-- FRAME 5: Definition of Done Final -->
+    <section class="miro-frame">
+      <span class="frame-tag">Frame 5</span>
+      <h2 class="frame-title">5. Definition of Done (DoD) — Versión Final Oficial</h2>
+      <div class="grid-three">
+        <div class="sticky-note note-purple">
+          <strong>DoD Técnico</strong>
+          • Código revisado (PR o mob).<br>
+          • CI verde (Tests + Lint).<br>
+          • Imagen Docker en GHCR.<br>
+          • Feature toggle configurado.<br>
+          • No rompe funcionalidad previa.
+        </div>
+        <div class="sticky-note note-blue">
+          <strong>DoD de Negocio</strong>
+          • Acceptance Criteria cumplidos.<br>
+          • Validable en entorno destino.<br>
+          • PO conoce y aprueba estado del toggle.<br>
+          • Accesibilidad WCAG verificada.
+        </div>
+        <div class="sticky-note note-green">
+          <strong>DoD de Despliegue</strong>
+          • Desplegado automáticamente en Render.<br>
+          • Health check <code>/health</code> pasando 200 OK.<br>
+          • Logs limpios de excepciones.<br>
+          • Toggle en estado acordado (OFF/10%/100%).
+        </div>
+      </div>
+    </section>
+
+    <!-- FRAME 6: Cierre del Taller -->
+    <section class="miro-frame">
+      <span class="frame-tag">Frame 6</span>
+      <h2 class="frame-title">6. Cierre del Taller y Retrospectiva</h2>
+      <div class="grid-three">
+        <div class="sticky-note note-yellow">
+          <strong>Ronda Final (Aprendizajes)</strong>
+          <em>"Puedo hacer merge a main varias veces al día sin miedo a romper producción gracias a los Feature Toggles."</em>
+        </div>
+        <div class="sticky-note note-green">
+          <strong>Acciones de Seguimiento</strong>
+          1. Monitorear los próximos 5 deploys automáticos.<br>
+          2. Crear toggles para las siguientes 2 historias.<br>
+          3. Revisar el nuevo DoD en la próxima Retrospective.
+        </div>
+        <div class="sticky-note note-purple">
+          <strong>Estado de Fase 1</strong>
+          ✅ <strong>Checklist Fase 1: 100% Cerrada.</strong><br>
+          El pipeline soporta entregas continuas e incrementales.
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="toast" class="toast">¡Código Mermaid copiado al portapapeles! Pégalo en Miro.</div>
+
+  <script>
+    const mermaidCode = `graph TD
+    subgraph F1["Frame 1: Diagnostico del Pipeline"]
+        P1["Push / PR"] --> CI["CI GitHub Actions"]
+        CI --> CR["Code Review"]
+        CR --> M["Merge a main"]
+        M --> D["Docker GHCR"]
+        D --> R["Auto-deploy a Render"]
+        R --> FT["ConfigCat Feature Toggle"]
+    end
+
+    subgraph F2["Frame 2: Robustez del CI"]
+        T1["Flake8 (Lint)"]
+        T2["Pytest (8 Unit Tests)"]
+        T3["Docker Build Verification"]
+    end
+
+    subgraph F4["Frame 4: Feature Toggle Modo Oscuro"]
+        TK1["Ticket 1: CSS en HTML (Flag OFF 0%)"]
+        TK2["Ticket 2: Boton Toggle Canary (10%)"]
+        TK3["Ticket 3: Persistencia + Rollout 100%"]
+        TK1 --> TK2 --> TK3
+    end
+
+    subgraph F5["Frame 5: Definition of Done"]
+        DOD_T["DoD Tecnico: CI Verde + Docker + Toggles"]
+        DOD_B["DoD Negocio: AC Cumplidos + PO Aprueba"]
+        DOD_D["DoD Despliegue: Render Auto + Healthcheck 200"]
+    end`;
+
+    function copiarMermaid() {
+      navigator.clipboard.writeText(mermaidCode).then(() => {
+        const t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3500);
+      });
+    }
+  </script>
+</body>
+</html>
