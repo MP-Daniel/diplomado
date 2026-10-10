@@ -71,7 +71,7 @@ class FeatureFlagService:
                     sdk_key=self.sdk_key,
                     options=configcatclient.ConfigCatOptions(
                         polling_mode=configcatclient.PollingMode.auto_poll(
-                            poll_interval_seconds=60)
+                            poll_interval_seconds=2)
                     )
                 )
                 logger.info(
