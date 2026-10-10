@@ -113,7 +113,8 @@ async def update_simulation_stage(payload: SimulationStageRequest):
     if not success:
         return JSONResponse(
             status_code=400,
-            content={"error": f"Invalid stage '{payload.stage}'. Must be ticket_1, ticket_2, or ticket_3"},
+            content={
+                "error": f"Invalid stage '{payload.stage}'. Must be ticket_1, ticket_2, or ticket_3"},
         )
     return {
         "status": "success",
@@ -121,24 +122,27 @@ async def update_simulation_stage(payload: SimulationStageRequest):
         "details": feature_flag_service.get_status_summary(),
     }
 
+
 @app.post("/api/pagos-express")
 async def process_pago_express(user_id: str = Query("anonymous")):
     """Simulates Pagos Express with telemetry."""
     is_enabled = feature_flag_service.is_pagos_express_enabled(user_id)
     if not is_enabled:
         return JSONResponse(
-            status_code=403, 
-            content={"error": "Pagos Express is disabled for this user. Fallback to normal payment."}
+            status_code=403,
+            content={
+                "error": "Pagos Express is disabled for this user. Fallback to normal payment."}
         )
-    
+
     # Telemetry simulation (Taller 6 Action 1)
     # Here we would log to Datadog/NewRelic to observe the release
     import random
     if random.random() < 0.1:  # 10% simulated failure
         return JSONResponse(status_code=500, content={"error": "Payment Gateway Error"})
-        
+
     return {"status": "success", "message": "Pago Express processed in 1-click!"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=True)
+    uvicorn.run("app.main:app", host=settings.HOST,
+                port=settings.PORT, reload=True)

@@ -70,12 +70,15 @@ class FeatureFlagService:
                 self.client = configcatclient.get(
                     sdk_key=self.sdk_key,
                     options=configcatclient.ConfigCatOptions(
-                        polling_mode=configcatclient.PollingMode.auto_poll(poll_interval_seconds=60)
+                        polling_mode=configcatclient.PollingMode.auto_poll(
+                            poll_interval_seconds=60)
                     )
                 )
-                logger.info("ConfigCat SDK initialized successfully with provided SDK Key.")
+                logger.info(
+                    "ConfigCat SDK initialized successfully with provided SDK Key.")
             except Exception as e:
-                logger.error(f"Error initializing ConfigCat client: {e}. Falling back to simulation.")
+                logger.error(
+                    f"Error initializing ConfigCat client: {e}. Falling back to simulation.")
                 self.client = None
 
     @property
@@ -89,7 +92,8 @@ class FeatureFlagService:
             return False
         if percentage >= 100:
             return True
-        hash_val = int(hashlib.md5(user_id.encode("utf-8")).hexdigest()[:6], 16)
+        hash_val = int(hashlib.md5(
+            user_id.encode("utf-8")).hexdigest()[:6], 16)
         bucket = hash_val % 100
         return bucket < percentage
 
@@ -101,7 +105,8 @@ class FeatureFlagService:
                 cc_user = User(identifier=user_id or "anonymous")
                 return bool(self.client.get_value(FLAG_DARK_MODE, False, cc_user))
             except Exception as e:
-                logger.error(f"ConfigCat evaluation failed: {e}. Using fallback.")
+                logger.error(
+                    f"ConfigCat evaluation failed: {e}. Using fallback.")
                 return False
 
         # 2. Local Simulation Mode according to Workshop 3 Tickets
@@ -126,9 +131,10 @@ class FeatureFlagService:
                 cc_user = User(identifier=user_id or "anonymous")
                 return bool(self.client.get_value(FLAG_PAGOS_EXPRESS, False, cc_user))
             except Exception as e:
-                logger.error(f"ConfigCat evaluation failed: {e}. Using fallback.")
+                logger.error(
+                    f"ConfigCat evaluation failed: {e}. Using fallback.")
                 return False
-        return False # Apagado por defecto en simulacion
+        return False  # Apagado por defecto en simulacion
 
     def get_status_summary(self, user_id: Optional[str] = "anonymous") -> Dict[str, Any]:
         """Provides full context for the dashboard UI, testing, and Miro workshop verification."""
@@ -136,7 +142,8 @@ class FeatureFlagService:
         is_enabled = self.is_dark_mode_enabled(user_id_clean)
         is_pagos_express = self.is_pagos_express_enabled(user_id_clean)
 
-        stage_meta = TICKETS_METADATA.get(self.current_simulated_stage, TICKETS_METADATA["ticket_1"])
+        stage_meta = TICKETS_METADATA.get(
+            self.current_simulated_stage, TICKETS_METADATA["ticket_1"])
 
         ui_visible = is_enabled if self.current_simulated_stage == "ticket_2" else (
             stage_meta["ui_toggle_visible"] if not self.is_cloud_mode else is_enabled
