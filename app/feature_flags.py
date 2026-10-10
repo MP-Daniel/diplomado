@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Feature flag key matching Workshop specification
 FLAG_DARK_MODE = "dark_mode_enabled"
+FLAG_PAGOS_EXPRESS = "pagos-express-v1"
 
 # Metadata for the 3 Slicing Tickets from Workshop 3
 TICKETS_METADATA = {
@@ -69,7 +70,7 @@ class FeatureFlagService:
                 self.client = configcatclient.get(
                     sdk_key=self.sdk_key,
                     options=configcatclient.ConfigCatOptions(
-                        poll_interval_seconds=60,
+                        polling_mode=configcatclient.PollingMode.auto_poll(poll_interval_seconds=60)
                     )
                 )
                 logger.info("ConfigCat SDK initialized successfully with provided SDK Key.")
@@ -118,27 +119,35 @@ class FeatureFlagService:
 
         return False
 
+    def is_pagos_express_enabled(self, user_id: Optional[str] = "anonymous") -> bool:
+        """Evaluates whether pagos-express-v1 flag is active for the given user."""
+        if self.client:
+            try:
+                cc_user = User(identifier=user_id or "anonymous")
+                return bool(self.client.get_value(FLAG_PAGOS_EXPRESS, False, cc_user))
+            except Exception as e:
+                logger.error(f"ConfigCat evaluation failed: {e}. Using fallback.")
+                return False
+        return False # Apagado por defecto en simulacion
+
     def get_status_summary(self, user_id: Optional[str] = "anonymous") -> Dict[str, Any]:
         """Provides full context for the dashboard UI, testing, and Miro workshop verification."""
         user_id_clean = user_id or "anonymous"
         is_enabled = self.is_dark_mode_enabled(user_id_clean)
+        is_pagos_express = self.is_pagos_express_enabled(user_id_clean)
 
         stage_meta = TICKETS_METADATA.get(self.current_simulated_stage, TICKETS_METADATA["ticket_1"])
 
-        # Determine if toggle UI should be visible
-        # In Ticket 1: False
-        # In Ticket 2: Only True if user is in the 10% canary cohort
-        # In Ticket 3: True for all
         ui_visible = is_enabled if self.current_simulated_stage == "ticket_2" else (
             stage_meta["ui_toggle_visible"] if not self.is_cloud_mode else is_enabled
         )
 
-        # Persistence is active only in Ticket 3 or when enabled in cloud
         persistence = stage_meta["persistence_enabled"] if not self.is_cloud_mode else is_enabled
 
         return {
             "flag_key": FLAG_DARK_MODE,
             "is_enabled": is_enabled,
+            "pagos_express_enabled": is_pagos_express,
             "user_id": user_id_clean,
             "provider": "ConfigCat Cloud" if self.is_cloud_mode else "Simulated TBD Slicing",
             "active_stage": self.current_simulated_stage,

@@ -255,3 +255,40 @@ function showToast(message) {
 
 // Iniciar al cargar el DOM
 document.addEventListener('DOMContentLoaded', initDashboard);
+
+// Taller 6 - Pagos Express Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const btnPagos = document.getElementById('btnPagosExpress');
+    const pagoStatus = document.getElementById('pagoStatus');
+    const telemetryLog = document.getElementById('telemetryLog');
+
+    if (btnPagos) {
+        btnPagos.addEventListener('click', async () => {
+            pagoStatus.textContent = 'Procesando...';
+            pagoStatus.style.color = 'var(--text-primary)';
+            try {
+                const response = await fetch(`/api/pagos-express?user_id=${window.appUserId || 'anonymous'}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (response.status === 403) {
+                    pagoStatus.textContent = '❌ Fallback: Pago Normal (Toggle Apagado)';
+                    pagoStatus.style.color = '#ffab00';
+                    telemetryLog.textContent = `[INFO] Fallback executed. user_id=${window.appUserId}`;
+                } else if (response.status === 500) {
+                    pagoStatus.textContent = '🚨 Error en Pago Express';
+                    pagoStatus.style.color = '#ff5630';
+                    telemetryLog.textContent = `[ERROR] Gateway timeout. user_id=${window.appUserId} (ALERTA!)`;
+                } else {
+                    pagoStatus.textContent = '✅ Pago Express Exitoso!';
+                    pagoStatus.style.color = '#36b37e';
+                    telemetryLog.textContent = `[SUCCESS] Pago 1-click convertido. user_id=${window.appUserId}`;
+                }
+            } catch (error) {
+                pagoStatus.textContent = 'Error de red';
+                telemetryLog.textContent = `[FATAL] Network error: ${error.message}`;
+            }
+        });
+    }
+});

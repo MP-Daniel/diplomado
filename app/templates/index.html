@@ -247,6 +247,27 @@
       </section>
     </div>
 
+    <!-- TALLER 6: CASO PAGOS EXPRESS -->
+    <section class="card" aria-labelledby="pagos-title" style="margin-bottom: 2rem; border-left: 4px solid #0052cc;">
+      <h2 id="pagos-title" class="section-title">
+        💸 Taller 6: Liberación Segura de Pagos Express
+      </h2>
+      <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+        Prueba la política de Liberación Segura (Toggles + Observabilidad). 
+        El flag <code>pagos-express-v1</code> controla esta funcionalidad. Si está activo (Canary), el botón funcionará. Si no, lanzará un 403 Fallback.
+      </p>
+      
+      <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+        <button id="btnPagosExpress" class="btn" style="background-color: #36b37e; border-color: #36b37e;">
+          🛒 Pagar Express (1-Click)
+        </button>
+        <span id="pagoStatus" style="font-weight: bold;"></span>
+      </div>
+      <div class="ticket-meta" style="font-size: 0.85rem; background: var(--bg-primary); padding: 10px; border-radius: 4px;">
+        <strong>Log de Telemetría:</strong> <span id="telemetryLog" style="font-family: monospace;">A la espera...</span>
+      </div>
+    </section>
+
     <!-- Live Preview & Tabla de Logs del Dashboard -->
     <section class="card" aria-labelledby="live-title">
       <h2 id="live-title" class="section-title">
