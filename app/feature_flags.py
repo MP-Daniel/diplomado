@@ -69,7 +69,7 @@ class FeatureFlagService:
                 self.client = configcatclient.get(
                     sdk_key=self.sdk_key,
                     options=configcatclient.ConfigCatOptions(
-                        poll_interval_seconds=60,
+                        polling_mode=configcatclient.PollingMode.auto_poll(poll_interval_seconds=60)
                     )
                 )
                 logger.info("ConfigCat SDK initialized successfully with provided SDK Key.")
