@@ -264,10 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnPagos) {
         btnPagos.addEventListener('click', async () => {
+            const currentUserId = state.currentUserId || (userSelector ? userSelector.value : 'user_1');
             pagoStatus.textContent = 'Procesando...';
             pagoStatus.style.color = 'var(--text-primary)';
             try {
-                const response = await fetch(`/api/pagos-express?user_id=${window.appUserId || 'anonymous'}`, {
+                const response = await fetch(`/api/pagos-express?user_id=${encodeURIComponent(currentUserId)}`, {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -275,15 +276,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.status === 403) {
                     pagoStatus.textContent = '❌ Fallback: Pago Normal (Toggle Apagado)';
                     pagoStatus.style.color = '#ffab00';
-                    telemetryLog.textContent = `[INFO] Fallback executed. user_id=${window.appUserId}`;
+                    telemetryLog.textContent = `[INFO] Fallback executed. user_id=${currentUserId}`;
                 } else if (response.status === 500) {
                     pagoStatus.textContent = '🚨 Error en Pago Express';
                     pagoStatus.style.color = '#ff5630';
-                    telemetryLog.textContent = `[ERROR] Gateway timeout. user_id=${window.appUserId} (ALERTA!)`;
+                    telemetryLog.textContent = `[ERROR] Gateway timeout. user_id=${currentUserId} (ALERTA!)`;
                 } else {
                     pagoStatus.textContent = '✅ Pago Express Exitoso!';
                     pagoStatus.style.color = '#36b37e';
-                    telemetryLog.textContent = `[SUCCESS] Pago 1-click convertido. user_id=${window.appUserId}`;
+                    telemetryLog.textContent = `[SUCCESS] Pago 1-click convertido. user_id=${currentUserId}`;
                 }
             } catch (error) {
                 pagoStatus.textContent = 'Error de red';
