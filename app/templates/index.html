@@ -317,6 +317,18 @@
   </div>
 
   <!-- Ticket 2 & 3: Lógica del Cliente -->
-  <script src="/static/js/dashboard.js"></script>
+  <script>
+    window.appUserId = localStorage.getItem('taller3_user_id') || 'user_1';
+    document.addEventListener('DOMContentLoaded', () => {
+      const sel = document.getElementById('userSelector');
+      if (sel) {
+        window.appUserId = sel.value;
+        sel.addEventListener('change', (e) => {
+          window.appUserId = e.target.value;
+        });
+      }
+    });
+  </script>
+  <script src="/static/js/dashboard.js?v=20261017_final"></script>
 </body>
 </html>
